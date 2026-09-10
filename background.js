@@ -1,3 +1,12 @@
+// Load shared helpers. The Chrome service worker lists only background.js in
+// the manifest, so import shared.js directly; on Firefox it is already loaded
+// via the "background.scripts" array.
+if (typeof importScripts === 'function' && typeof ExtLib === 'undefined') {
+  importScripts('shared.js');
+}
+
+const { requestDraftRewrite } = ExtLib;
+
 // Read from chrome.storage.local on startup. If missing, logs a one-time
 // message with the setter command.  chrome.storage.local persists across
 // browser restarts — you set the key once and it stays forever.
@@ -204,28 +213,20 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       console.warn("OpenRouter key not set. Run: chrome.storage.local.set({openrouterKey: \"sk-or-v1-...\"})");
       return;
     }
-    const draft = request.draft;
     const tabId = sender.tab ? sender.tab.id : null;
     if (tabId) chrome.tabs.sendMessage(tabId, { action: "showProgress" });
-    fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${OPENROUTER_KEY}` },
-      body: JSON.stringify({ model: "openai/gpt-oss-120b", messages: [
-        { role: "system", content: "Rewrite the following email draft as polished Markdown. Output ONLY the rewritten email — do NOT wrap your response in a code fence (```). Do not add explanations, greetings, or sign-offs." },
-        { role: "user", content: draft }
-      ] })
-    })
-      .then(res => res.json())
-      .then(data => {
-        const markdown = data?.choices?.[0]?.message?.content;
-        if (markdown && tabId) {
-          chrome.tabs.sendMessage(tabId, { action: "draftCleaned", markdown });
-        } else if (tabId) {
-          chrome.tabs.sendMessage(tabId, { action: "draftError" });
-        }
+
+    requestDraftRewrite(fetch, OPENROUTER_KEY, request.draft)
+      .then((markdown) => {
+        if (tabId) chrome.tabs.sendMessage(tabId, { action: "draftCleaned", markdown });
       })
-      .catch(() => { if (tabId) chrome.tabs.sendMessage(tabId, { action: "draftError" }); })
-      .finally(() => { if (tabId) chrome.tabs.sendMessage(tabId, { action: "hideProgress" }); });
+      .catch((error) => {
+        console.error("[email-cleanup] rewrite failed:", error.message);
+        if (tabId) chrome.tabs.sendMessage(tabId, { action: "draftError" });
+      })
+      .finally(() => {
+        if (tabId) chrome.tabs.sendMessage(tabId, { action: "hideProgress" });
+      });
     return true;
   }
 });

@@ -151,6 +151,62 @@
     }, 3000);
   };
 
+  const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
+  const OPENROUTER_MODEL = 'openai/gpt-oss-120b';
+
+  const DRAFT_SYSTEM_PROMPT =
+    'Rewrite the following email draft as polished Markdown. Output ONLY the rewritten email — do NOT wrap your response in a code fence (```). Do not add explanations, greetings, or sign-offs.';
+
+  // Error with a human-readable cause, so the caller can log or surface why a
+  // draft rewrite failed instead of showing the same generic message.
+  class DraftRewriteError extends Error {
+    constructor(message, cause) {
+      super(message);
+      this.name = 'DraftRewriteError';
+      this.cause = cause;
+    }
+  }
+
+  // Ask OpenRouter to rewrite a draft. `fetchImpl` is injectable so this can be
+  // unit-tested without a network. Resolves to the rewritten markdown, or
+  // rejects with a DraftRewriteError describing the failure.
+  const requestDraftRewrite = async (fetchImpl, apiKey, draft) => {
+    let response;
+    try {
+      response = await fetchImpl(OPENROUTER_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          model: OPENROUTER_MODEL,
+          messages: [
+            { role: 'system', content: DRAFT_SYSTEM_PROMPT },
+            { role: 'user', content: draft },
+          ],
+        }),
+      });
+    } catch (error) {
+      throw new DraftRewriteError(`Network error: ${error.message}`, error);
+    }
+
+    if (!response.ok) {
+      throw new DraftRewriteError(`OpenRouter returned HTTP ${response.status}`, { status: response.status });
+    }
+
+    let data;
+    try {
+      data = await response.json();
+    } catch (error) {
+      throw new DraftRewriteError('OpenRouter returned invalid JSON', error);
+    }
+
+    const markdown = data?.choices?.[0]?.message?.content;
+    if (!markdown) {
+      throw new DraftRewriteError('OpenRouter response had no content');
+    }
+
+    return markdown;
+  };
+
   const api = {
     buildPrompt,
     getAllPageText,
@@ -158,6 +214,7 @@
     isYouTube,
     matchesPattern,
     notify,
+    requestDraftRewrite,
     sleep,
     truncate,
   };

@@ -3,7 +3,7 @@
     "default_title": "Take screenshot"
   },
   "background": {
-    "scripts": ["background.js"],
+    "scripts": ["shared.js", "background.js"],
     "service_worker": "background.js"
   },
   "browser_specific_settings": {
