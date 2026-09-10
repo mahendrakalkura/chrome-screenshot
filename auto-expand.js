@@ -1,11 +1,14 @@
 (() => {
   'use strict';
 
+  const { matchesPattern, notify } = window.ExtLib;
+
+  // Re-injection while already active toggles the feature off.
   if (window.__autoExpandActive) {
     window.__autoExpandObserver?.disconnect();
     window.__autoExpandObserver = null;
     window.__autoExpandActive = false;
-    showNotification('Auto-expand stopped', '#f44336');
+    notify('Auto-expand stopped', { color: '#f44336' });
     return;
   }
 
@@ -24,8 +27,6 @@
 
   const expanded = new WeakSet();
 
-  const matchesPattern = (text) => text && patterns.some(p => p.test(text.trim()));
-
   const isVisible = (el) => {
     if (!el?.offsetParent) return false;
     const s = getComputedStyle(el);
@@ -35,7 +36,7 @@
   const isExpandButton = (el) => {
     if (expanded.has(el)) return false;
     const text = el.textContent || el.innerText || el.value || el.title || el.getAttribute('aria-label');
-    if (matchesPattern(text)) return true;
+    if (matchesPattern(text, patterns)) return true;
     if (el.getAttribute('aria-expanded') === 'false') return true;
     const cls = el.className || '';
     return typeof cls === 'string' && /expand|show-more|read-more|collapsed/i.test(cls);
@@ -43,16 +44,16 @@
 
   const expandAll = () => {
     let count = 0;
-    document.querySelectorAll(selectors.join(', ')).forEach(el => {
+    document.querySelectorAll(selectors.join(', ')).forEach((el) => {
       if (isVisible(el) && isExpandButton(el)) {
         try {
           expanded.add(el);
           el.click();
           count++;
-        } catch (e) {}
+        } catch {}
       }
     });
-    document.querySelectorAll('details:not([open])').forEach(el => {
+    document.querySelectorAll('details:not([open])').forEach((el) => {
       if (!expanded.has(el) && isVisible(el)) {
         expanded.add(el);
         el.open = true;
@@ -76,25 +77,6 @@
     }, 500);
   };
 
-  const showNotification = (msg, color = '#4CAF50') => {
-    document.getElementById('auto-expand-notification')?.remove();
-    const div = document.createElement('div');
-    div.id = 'auto-expand-notification';
-    div.textContent = msg;
-    div.style.cssText = `position:fixed;top:20px;right:20px;background:${color};color:white;padding:16px 24px;border-radius:8px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:14px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.15);z-index:2147483647;animation:slideIn 0.3s ease-out`;
-    if (!document.getElementById('auto-expand-styles')) {
-      const style = document.createElement('style');
-      style.id = 'auto-expand-styles';
-      style.textContent = `@keyframes slideIn{from{transform:translateX(400px);opacity:0}to{transform:translateX(0);opacity:1}}@keyframes slideOut{from{transform:translateX(0);opacity:1}to{transform:translateX(400px);opacity:0}}`;
-      document.head.appendChild(style);
-    }
-    document.body.appendChild(div);
-    setTimeout(() => {
-      div.style.animation = 'slideOut 0.3s ease-out';
-      setTimeout(() => div.remove(), 300);
-    }, 3000);
-  };
-
   const showIndicator = () => {
     document.getElementById('auto-expand-indicator')?.remove();
     const div = document.createElement('div');
@@ -112,7 +94,7 @@
   };
 
   window.__autoExpandActive = true;
-  expandMultiple((count) => showNotification(`Continuous auto-expand enabled (${count} expanded)`, '#2196F3'));
+  expandMultiple((count) => notify(`Continuous auto-expand enabled (${count} expanded)`, { color: '#2196F3' }));
 
   const observer = new MutationObserver(() => {
     clearTimeout(window.__autoExpandTimeout);

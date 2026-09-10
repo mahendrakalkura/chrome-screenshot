@@ -27,7 +27,7 @@
       "run_at": "document_start"
     },
     {
-      "js": ["email-cleanup.js"],
+      "js": ["shared.js", "email-cleanup.js"],
       "matches": ["*://mail.google.com/*"],
       "run_at": "document_idle"
     }
@@ -46,6 +46,6 @@
   ],
   "manifest_version": 3,
   "name": "My Extensions",
-  "permissions": ["activeTab", "scripting", "contextMenus", "storage", "tabs"],
+  "permissions": ["activeTab", "contextMenus", "debugger", "scripting", "storage", "tabs"],
   "version": "1.5"
 }

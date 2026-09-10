@@ -3,17 +3,7 @@
   if (window.__emailCleanupInjected) return;
   window.__emailCleanupInjected = true;
 
-  // Helper to create toast notifications (re-use pattern from auto-expand)
-  const showToast = (msg, color = '#4CAF50') => {
-    const existing = document.getElementById('email-cleanup-toast');
-    if (existing) existing.remove();
-    const toast = document.createElement('div');
-    toast.id = 'email-cleanup-toast';
-    toast.textContent = msg;
-    toast.style.cssText = `position:fixed;top:20px;right:20px;background:${color};color:white;padding:12px 20px;border-radius:6px;font-family:Arial,sans-serif;font-size:14px;z-index:2147483647;box-shadow:0 2px 8px rgba(0,0,0,0.2);`;
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 3000);
-  };
+  const { notify } = window.ExtLib;
 
   const createProgressOverlay = () => {
     ensureSpinKeyframes();
@@ -52,7 +42,7 @@
     btn.addEventListener('click', () => {
       const dialog = btn.closest('div[role="dialog"]') || document;
       const editable = dialog.querySelector('div[contenteditable="true"][aria-label="Message Body"]') || dialog.querySelector('div[aria-label="Message Body"]');
-      if (!editable) { showToast('Unable to locate draft area', '#d32f2f'); return; }
+      if (!editable) { notify('Unable to locate draft area', { color: '#d32f2f' }); return; }
       const originalDraft = editable.innerText;
       setButtonLoading(btn, true);
       window.__emailCleanupBtn = btn;
@@ -103,12 +93,12 @@
       if (window.__emailCleanupBtn) { setButtonLoading(window.__emailCleanupBtn, false); window.__emailCleanupBtn = null; }
     } else if (msg.action === 'draftCleaned') {
       const editable = window.__emailCleanupEl;
-      if (!editable) { showToast('Unable to locate draft area', '#d32f2f'); return; }
+      if (!editable) { notify('Unable to locate draft area', { color: '#d32f2f' }); return; }
       editable.focus();
       document.execCommand('selectAll');
       document.execCommand('insertText', false, msg.markdown);
       editable.dispatchEvent(new Event('input', { bubbles: true }));
-      showToast('Draft cleaned and rendered');
+      notify('Draft cleaned and rendered');
     } else if (msg.action === 'draftError') {
       const editable = window.__emailCleanupEl;
       if (editable && window.__emailCleanupOriginal) {
@@ -117,7 +107,7 @@
         document.execCommand('insertText', false, window.__emailCleanupOriginal);
       }
       if (window.__emailCleanupBtn) { setButtonLoading(window.__emailCleanupBtn, false); window.__emailCleanupBtn = null; }
-      showToast('LLM request failed – original draft restored', '#d32f2f');
+      notify('LLM request failed – original draft restored', { color: '#d32f2f' });
     }
     return true;
   });

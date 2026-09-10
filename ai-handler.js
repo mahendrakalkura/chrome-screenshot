@@ -9,7 +9,7 @@
   }
   window.__aiHandlerActive = true;
 
-  const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+  const { sleep, notify } = window.ExtLib;
 
   // Poll fn() every `interval` ms until it returns a truthy value or `timeout` ms elapse.
   const pollFor = async (fn, timeout, interval = 250) => {
@@ -309,19 +309,21 @@
   const MAX_ATTEMPTS = 3;
 
   const run = async () => {
+    let aiService = 'claude';
     try {
-      const aiService = window.__aiService || 'claude';
-
-      // Get the stored content
-      const content = await new Promise(resolve => {
-        chrome.storage.local.get(['summarizeContent'], (result) => resolve(result.summarizeContent));
+      // Read the content and target service written by summarize.js.
+      const stored = await new Promise(resolve => {
+        chrome.storage.local.get(['summarizeContent', 'summarizeService'], (result) => resolve(result));
       });
 
+      const content = stored.summarizeContent;
       if (!content) {
         console.log('[ai-handler] no content in storage, nothing to do');
         window.__aiHandlerActive = false;
         return;
       }
+
+      aiService = stored.summarizeService || 'claude';
 
       const marker = content.slice(0, 30);
       const selectors = inputSelectors[aiService] || inputSelectors.claude;
@@ -333,7 +335,7 @@
         if (sent) {
           console.log('[ai-handler] submitted successfully');
           // Clear the stored content only after a verified send
-          chrome.storage.local.remove(['summarizeContent']);
+          chrome.storage.local.remove(['summarizeContent', 'summarizeService']);
           window.__aiHandlerActive = false;
           return;
         }
@@ -341,9 +343,11 @@
       }
 
       console.error('[ai-handler] giving up after', MAX_ATTEMPTS, 'attempts');
+      notify(`Could not send to ${aiService}. Check the tab and try again.`, { color: '#f44336' });
       window.__aiHandlerActive = false;
     } catch (error) {
       console.error('[ai-handler] error:', error);
+      notify(`Could not send to ${aiService}. Check the tab and try again.`, { color: '#f44336' });
       window.__aiHandlerActive = false;
     }
   };

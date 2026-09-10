@@ -1,188 +1,106 @@
 # My Extensions
 
-A Chrome extension with useful productivity features.
+A cross-browser (Firefox + Chromium) extension bundling four productivity features:
+
+- Element screenshot
+- Auto-expand collapsed content
+- AI page/transcript summarization
+- Gmail draft cleanup
+
+Version 1.5, Manifest V3.
 
 ## Features
 
 ### Element Screenshot
-- Click the extension icon or right-click → "Take screenshot" to activate selection mode
-- Hover over any element to highlight it
-- Click to capture screenshot
-- Screenshot opens in new tab as blob URL
-- Press ESC to cancel
+
+- Click the toolbar icon, or right-click → "Take screenshot", to enter selection mode.
+- Hover over any element to highlight it; click to capture.
+- The full element is captured, including parts outside the viewport, and opens in a new tab as a PNG; press Escape to cancel.
+- On Chromium this uses the `debugger` permission (attached only for the instant of capture, showing a brief "debugging" infobar). Firefox has no debugger API, so capture there is limited to the visible viewport.
 
 ### Auto-Expand Content
-- Right-click on any page → "Expand all content" to automatically expand "Read more", "Show more", etc.
-- **Continuous monitoring mode**: Automatically expands new content as it loads (perfect for infinite scroll!)
-- Works on Twitter/X, Reddit, LinkedIn, Medium, and other sites with expandable content
-- Toggle on/off by clicking the context menu again
-- Shows a blue indicator badge when active
-- Intelligently avoids re-clicking already expanded content
+
+- Right-click → "Expand all content" to expand "Read more", "Show more", and similar controls.
+- Runs in continuous monitoring mode: new content is expanded as it loads (infinite scroll).
+- Toggle it off by choosing the same menu item again; a badge shows while it is active.
+
+### Summarize (AI Services)
+
+- Right-click → "Summarize with …" and pick a service: Claude, DeepSeek, Gemini, Kimi, OpenAI, Qwen, or z.ai.
+- The extension extracts the page text (or the YouTube transcript, on YouTube), opens the chosen AI service in a new tab, and pastes the content with a summarization prompt.
+- No API key is required: it drives the service's own web UI.
 
 ### Email Cleanup (Gmail)
-- Opens automatically in Gmail — a "🧹 Clean" button appears in the compose window formatting toolbar
-- Click to rewrite your draft as polished Markdown via OpenRouter (GPT-OSS-120B)
-- Shows a progress overlay while processing; restores original draft on failure
 
-**First-time setup:** You need an OpenRouter API key. Open the extension's service worker console and run:
+- A "Clean" button appears in the Gmail compose toolbar.
+- Clicking it rewrites the draft as polished Markdown via OpenRouter (GPT-OSS-120B).
+- A progress overlay shows while processing; the original draft is restored on failure.
+
+**First-time setup:** the extension needs an OpenRouter API key, stored once in extension storage. Open the background script console and run:
 
 ```
-chrome.storage.local.set({openrouterKey: "sk-or-v1-YOUR-KEY"})
+chrome.storage.local.set({ openrouterKey: "sk-or-v1-YOUR-KEY" })
 ```
 
-The key persists across browser restarts — you only need to set it once.
+The key persists across browser restarts.
 
-## Installation Instructions (Local/Unpacked)
+## Install
 
-Since you're not publishing this extension to the Chrome Web Store, you'll install it locally as an "unpacked extension". Here's how:
+### Firefox
 
-### Step 1: Download/Clone the Extension
+The manifest includes Firefox settings. To build a signed `.xpi`:
 
-Make sure you have all the extension files in a local folder on your computer. The folder should contain:
 ```
-my-extensions/
-├── manifest.json
-├── background.js
-├── content.js
-├── content.css
-├── auto-expand.js
-└── README.md
+web-ext sign --api-key="$API_KEY" --api-secret="$API_SECRET" --channel unlisted
 ```
 
-### Step 2: Open Chrome Extensions Page
+Or load it temporarily via `about:debugging` → "Load Temporary Add-on".
 
-1. Open Google Chrome
-2. Click the three dots menu (⋮) in the top-right corner
-3. Go to **More tools** → **Extensions**
+### Chromium (Chrome / Edge / Brave)
 
-   Or simply type this in your address bar:
-   ```
-   chrome://extensions/
-   ```
+1. Open `chrome://extensions/`.
+2. Enable "Developer mode".
+3. "Load unpacked" and select this folder.
 
-### Step 3: Enable Developer Mode
+## Development
 
-1. In the top-right corner of the Extensions page, you'll see a toggle for **Developer mode**
-2. Turn it **ON** (it should turn blue)
+### File Structure
 
-### Step 4: Load the Extension
+- `manifest.json` - extension config and permissions
+- `background.js` - service worker / event page: context menus, message routing, OpenRouter call
+- `shared.js` - helpers shared by the content scripts (extraction, prompt building, notifications)
+- `content.js` - screenshot selection and capture
+- `content.css` - screenshot highlight styling
+- `auto-expand.js` - expand-content content script
+- `summarize.js` - page/transcript extraction for summarization
+- `ai-handler.js` - pastes the extracted content into the AI service's input
+- `email-cleanup.js` - Gmail compose toolbar button and draft rewriting
+- `atlassian.css` - Atlassian page tweaks
+- `imdb.css` - IMDb page tweaks
+- `sign.sh` - web-ext signing helper
+- `package.json` - test scripts
+- `playwright.config.js` - Playwright configuration
+- `test/` - unit and end-to-end tests
 
-1. Click the **Load unpacked** button (it appears in the top-left after enabling Developer mode)
-2. Navigate to the folder containing your extension files (the `my-extensions` folder)
-3. Select the folder and click **Select Folder** (or **Open** on Mac)
+### Tests
 
-### Step 5: Verify Installation
+Unit tests use Node's built-in test runner (no dependencies); end-to-end tests use Playwright.
 
-You should now see your extension listed on the extensions page:
-- **Name**: My Extensions
-- **Version**: 1.0
-- **ID**: A unique ID will be generated
-- Status should show **Enabled**
+```
+npm install
+npx playwright install chromium   # once, downloads the test browser
+npm run test:unit
+npm run test:e2e
+npm test
+```
 
-### Step 6: Pin the Extension (Recommended)
-
-1. Look for the extension icon in your Chrome toolbar
-   - If you don't see it, click the puzzle piece icon (🧩) in the toolbar
-2. Find "My Extensions" in the dropdown
-3. Click the **pin icon** (📌) next to it
-4. The extension icon will now appear directly in your toolbar for easy access
-
-## How to Use
-
-### Taking Screenshots
-1. **Navigate** to any webpage
-2. **Click** the extension icon OR **right-click** → "Take screenshot"
-3. **Hover** over elements on the page - they will highlight with a blue border
-4. **Click** the element you want to screenshot
-5. Screenshot opens in a new tab as blob URL
-6. Right-click the image to save if needed
-
-**To cancel**: Press the **ESC** key at any time
-
-### Auto-Expand Content
-1. **Navigate** to any webpage with expandable content (Twitter/X, Reddit, articles, etc.)
-2. **Right-click** anywhere on the page
-3. Select **"Expand all content"** from the context menu
-4. The extension activates **continuous monitoring mode**:
-   - Immediately expands all current "Read more", "Show more", etc. buttons
-   - A blue notification shows how many elements were expanded
-   - A persistent blue badge appears in the bottom-right corner
-   - As you scroll and new content loads, it automatically expands
-5. **To stop**: Right-click → "Expand all content" again (acts as a toggle)
-   - The badge disappears and monitoring stops
-   - A red notification confirms it's stopped
-
-**Perfect for infinite scroll sites like Twitter/X!** Just enable it once and all tweets will auto-expand as you scroll.
-
-## Troubleshooting
-
-### Extension doesn't appear after loading
-- Make sure you selected the correct folder (the one containing `manifest.json`)
-- Check for errors on the Extensions page - there should be no errors listed
-
-### "Manifest file is missing or unreadable" error
-- Verify that `manifest.json` exists in the folder you selected
-- Make sure the file is named exactly `manifest.json` (not `manifest.json.txt`)
-
-### Screenshots not opening in new tab
-- Make sure popup blocker isn't blocking the new tab
-- Check browser console (F12) for errors
-- Try reloading the extension
-
-### Extension icon is grayed out
-- The extension can't run on Chrome internal pages (like `chrome://extensions/`)
-- Navigate to a regular webpage (like google.com) and try again
-
-### Highlighting isn't working
-- Try clicking the extension icon again
-- Refresh the webpage and try again
-- Check the browser console (F12) for any error messages
-
-### Screenshots look incorrect or incomplete
-- Some websites use canvas/iframe elements that may not capture properly
-- Try scrolling the element fully into view before capturing
-- Complex animations or dynamic content may not capture perfectly
-
-## Updating the Extension
-
-If you make changes to the extension files:
-
-1. Go to `chrome://extensions/`
-2. Find your extension
-3. Click the **circular reload icon** (🔄)
-4. The changes will be applied immediately
-
-## Uninstalling
-
-1. Go to `chrome://extensions/`
-2. Find "My Extensions"
-3. Click **Remove**
-4. Confirm the removal
-
-## File Structure
-
-- `manifest.json` - Extension configuration and permissions
-- `background.js` - Service worker that handles icon clicks and context menu
-- `content.js` - Handles element selection and screenshot capture
-- `content.css` - Styling for the highlight effect
-- `auto-expand.js` - Automatically expands "Read more" and similar buttons
-
-## Browser Compatibility
-
-- Google Chrome (recommended)
-- Microsoft Edge (Chromium-based)
-- Brave Browser
-- Any Chromium-based browser that supports Manifest V3
+The E2E suite loads the real extension in Chromium and verifies the extraction and paste logic against fixture pages. It does not automate the native context menu or real AI-service logins; those remain manual.
 
 ## Privacy
 
-This extension:
-- Screenshot feature only runs when you activate it (click icon or context menu)
-- Auto-expand feature only runs when you activate it (context menu)
-- Does NOT collect any data
-- Does NOT send information anywhere
-- Runs completely locally on your computer
-- Only requires access to the active tab
+- Screenshot and auto-expand run locally and send nothing anywhere.
+- Summarize sends the extracted page content to the AI service you choose; that is the feature.
+- Email cleanup sends the draft text to OpenRouter for rewriting.
 
 ## License
 

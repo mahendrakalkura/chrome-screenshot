@@ -2,17 +2,4 @@
 	outline: 3px solid #4285f4 !important;
 	outline-offset: -3px !important;
 	cursor: crosshair !important;
-	position: relative !important;
-}
-
-.div-screenshot-highlight::before {
-	content: "";
-	position: absolute !important;
-	top: 0 !important;
-	left: 0 !important;
-	right: 0 !important;
-	bottom: 0 !important;
-	background: rgba(66, 133, 244, 0.1) !important;
-	pointer-events: none !important;
-	z-index: 999998 !important;
 }
