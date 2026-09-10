@@ -158,23 +158,33 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       return true;
     }
 
-    // Full-element capture via the debugger, which can shoot content outside
-    // the viewport. Firefox has no debugger API, so fall back to a
-    // viewport-only capture the content script crops itself.
-    if (!chrome.debugger) {
+    // Viewport-only fallback. Used when the debugger is unavailable (Firefox)
+    // or refuses to attach (restricted pages such as the built-in PDF viewer,
+    // which Chrome hosts as a different chrome-extension:// URL). The content
+    // script crops the returned image to the element.
+    const captureViewport = () => {
       chrome.tabs.captureVisibleTab(null, { format: "png" }, (dataUrl) => {
         if (chrome.runtime.lastError) {
-          sendResponse({ success: false, error: chrome.runtime.lastError.message });
+          sendResponse({
+            success: false,
+            error: `Can't capture this page (${chrome.runtime.lastError.message})`,
+          });
           return;
         }
         sendResponse({ success: true, dataUrl });
       });
+    };
+
+    // Full-element capture via the debugger, which can shoot content outside
+    // the viewport.
+    if (!chrome.debugger) {
+      captureViewport();
       return true;
     }
 
     chrome.debugger.attach({ tabId }, "1.3", () => {
       if (chrome.runtime.lastError) {
-        sendResponse({ success: false, error: chrome.runtime.lastError.message });
+        captureViewport();
         return;
       }
       chrome.debugger.sendCommand(
@@ -189,7 +199,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           const error = chrome.runtime.lastError;
           chrome.debugger.detach({ tabId });
           if (error || !result?.data) {
-            sendResponse({ success: false, error: error?.message || "Capture failed" });
+            captureViewport();
             return;
           }
           // Open the screenshot in a new tab. Data URLs opened via the tabs
